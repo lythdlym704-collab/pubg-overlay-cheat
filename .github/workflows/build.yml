@@ -15,10 +15,16 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev build-essential ccache
+          sudo apt-get install -y git zip unzip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev build-essential ccache
 
       - name: Install Buildozer and Cython
         run: |
@@ -29,14 +35,14 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+          echo "JAVA_HOME=$JAVA_HOME"
+          java -version
           buildozer android debug 2>&1 | tee build.log
 
       - name: Show last errors
         if: failure()
         run: |
-          grep -n -i -E "error|failed|exception|not found|cannot" build.log | tail -n 40
-          echo "===== LAST 60 LINES ====="
-          tail -n 60 build.log
+          grep -n -i -E "error|failed|exception|not found|cannot|requires" build.log | grep -v -E "ENVIRONMENT|_ID|_URL" | tail -n 40
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
