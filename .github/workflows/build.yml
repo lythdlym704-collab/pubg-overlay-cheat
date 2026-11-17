@@ -1,4 +1,4 @@
-name: Build Crosshair APK
+name: Build Real Anonymous Dispatcher APK
 
 on:
   push:
@@ -19,10 +19,10 @@ jobs:
         with:
           gradle-version: '8.5'
 
-      - name: Generate project files
+      - name: Generate Project
         run: |
           rm -rf app/src/main/java
-          mkdir -p app/src/main/java/com/hatem/crosshair
+          mkdir -p app/src/main/java/com/anonymous/sender
 
           cat > settings.gradle <<'EOF'
           pluginManagement {
@@ -31,7 +31,7 @@ jobs:
           dependencyResolutionManagement {
               repositories { google(); mavenCentral() }
           }
-          rootProject.name = "CrosshairApp"
+          rootProject.name = "AnonSender"
           include ':app'
           EOF
 
@@ -44,10 +44,10 @@ jobs:
           cat > app/build.gradle <<'EOF'
           plugins { id 'com.android.application' }
           android {
-              namespace 'com.hatem.crosshair'
+              namespace 'com.anonymous.sender'
               compileSdk 34
               defaultConfig {
-                  applicationId "com.hatem.crosshair"
+                  applicationId "com.anonymous.sender"
                   minSdk 24
                   targetSdk 33
                   versionCode 1
@@ -63,310 +63,155 @@ jobs:
           cat > app/src/main/AndroidManifest.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
-              <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+              <uses-permission android:name="android.permission.INTERNET"/>
+              
               <application
-                  android:label="Crosshair X"
-                  android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+                  android:label="Anonymous Sender"
+                  android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+                  android:usesCleartextTraffic="true">
+                  
                   <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
                           <category android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
                   </activity>
-                  <service android:name=".OverlayService" android:exported="false"/>
+                  
               </application>
           </manifest>
           EOF
 
-          cat > app/src/main/java/com/hatem/crosshair/CrosshairView.java <<'EOF'
-          package com.hatem.crosshair;
-
-          import android.content.Context;
-          import android.graphics.Canvas;
-          import android.graphics.Paint;
-          import android.view.View;
-
-          public class CrosshairView extends View {
-              private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-              private int shape = 0, sizePx = 60, thickPx = 4;
-
-              public CrosshairView(Context c) {
-                  super(c);
-                  paint.setStrokeCap(Paint.Cap.ROUND);
-              }
-
-              public void apply(int color, int shape, int sizePx, int thickPx) {
-                  paint.setColor(color);
-                  paint.setStrokeWidth(thickPx);
-                  this.shape = shape;
-                  this.sizePx = sizePx;
-                  this.thickPx = thickPx;
-                  requestLayout();
-                  invalidate();
-              }
-
-              @Override
-              protected void onMeasure(int w, int h) {
-                  int s = sizePx + thickPx * 2 + 4;
-                  setMeasuredDimension(s, s);
-              }
-
-              @Override
-              protected void onDraw(Canvas c) {
-                  float cx = getWidth() / 2f, cy = getHeight() / 2f, r = sizePx / 2f;
-                  if (shape == 0) {
-                      paint.setStyle(Paint.Style.STROKE);
-                      c.drawLine(cx - r, cy - r, cx + r, cy + r, paint);
-                      c.drawLine(cx - r, cy + r, cx + r, cy - r, paint);
-                  } else if (shape == 1) {
-                      paint.setStyle(Paint.Style.STROKE);
-                      c.drawLine(cx - r, cy, cx + r, cy, paint);
-                      c.drawLine(cx, cy - r, cx, cy + r, paint);
-                  } else {
-                      paint.setStyle(Paint.Style.FILL);
-                      c.drawCircle(cx, cy, Math.max(thickPx, r / 3f), paint);
-                  }
-              }
-          }
-          EOF
-
-          cat > app/src/main/java/com/hatem/crosshair/OverlayService.java <<'EOF'
-          package com.hatem.crosshair;
-
-          import android.app.Notification;
-          import android.app.NotificationChannel;
-          import android.app.NotificationManager;
-          import android.app.Service;
-          import android.content.Intent;
-          import android.content.SharedPreferences;
-          import android.graphics.PixelFormat;
-          import android.os.Build;
-          import android.os.IBinder;
-          import android.view.Gravity;
-          import android.view.WindowManager;
-
-          public class OverlayService extends Service
-                  implements SharedPreferences.OnSharedPreferenceChangeListener {
-
-              public static boolean running = false;
-              private WindowManager wm;
-              private CrosshairView view;
-              private WindowManager.LayoutParams lp;
-              private SharedPreferences prefs;
-
-              @Override
-              public IBinder onBind(Intent i) { return null; }
-
-              @Override
-              public int onStartCommand(Intent intent, int flags, int startId) {
-                  startForeground(1, buildNotification());
-                  if (view == null) {
-                      prefs = getSharedPreferences("cfg", MODE_PRIVATE);
-                      prefs.registerOnSharedPreferenceChangeListener(this);
-                      wm = (WindowManager) getSystemService(WINDOW_SERVICE);
-                      view = new CrosshairView(this);
-                      lp = new WindowManager.LayoutParams(
-                              WindowManager.LayoutParams.WRAP_CONTENT,
-                              WindowManager.LayoutParams.WRAP_CONTENT,
-                              Build.VERSION.SDK_INT >= 26
-                                      ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                                      : WindowManager.LayoutParams.TYPE_PHONE,
-                              WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                                      | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-                                      | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                                      | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                              PixelFormat.TRANSLUCENT);
-                      lp.gravity = Gravity.CENTER;
-                      refresh();
-                      wm.addView(view, lp);
-                      running = true;
-                  }
-                  return START_STICKY;
-              }
-
-              private void refresh() {
-                  float d = getResources().getDisplayMetrics().density;
-                  int color = prefs.getInt("color", 0xFFFF0000);
-                  int shape = prefs.getInt("shape", 0);
-                  int size = (int) ((10 + prefs.getInt("size", 20)) * d);
-                  int thick = (int) ((1 + prefs.getInt("thick", 2)) * d);
-                  view.apply(color, shape, size, thick);
-              }
-
-              @Override
-              public void onSharedPreferenceChanged(SharedPreferences sp, String key) {
-                  if (view == null) return;
-                  refresh();
-                  try { wm.updateViewLayout(view, lp); } catch (Exception ignored) {}
-              }
-
-              private Notification buildNotification() {
-                  String ch = "crosshair";
-                  if (Build.VERSION.SDK_INT >= 26) {
-                      NotificationChannel c = new NotificationChannel(
-                              ch, "Crosshair", NotificationManager.IMPORTANCE_LOW);
-                      ((NotificationManager) getSystemService(NOTIFICATION_SERVICE))
-                              .createNotificationChannel(c);
-                  }
-                  Notification.Builder b = Build.VERSION.SDK_INT >= 26
-                          ? new Notification.Builder(this, ch)
-                          : new Notification.Builder(this);
-                  return b.setContentTitle("Crosshair X")
-                          .setContentText("Overlay is running")
-                          .setSmallIcon(android.R.drawable.ic_menu_compass)
-                          .build();
-              }
-
-              @Override
-              public void onDestroy() {
-                  running = false;
-                  if (prefs != null) prefs.unregisterOnSharedPreferenceChangeListener(this);
-                  if (view != null && wm != null) {
-                      try { wm.removeView(view); } catch (Exception ignored) {}
-                  }
-                  view = null;
-                  super.onDestroy();
-              }
-          }
-          EOF
-
-          cat > app/src/main/java/com/hatem/crosshair/MainActivity.java <<'EOF'
-          package com.hatem.crosshair;
+          cat > app/src/main/java/com/anonymous/sender/MainActivity.java <<'EOF'
+          package com.anonymous.sender;
 
           import android.app.Activity;
-          import android.content.Intent;
-          import android.content.SharedPreferences;
-          import android.graphics.Color;
-          import android.net.Uri;
-          import android.os.Build;
           import android.os.Bundle;
-          import android.provider.Settings;
+          import android.os.Handler;
+          import android.os.Looper;
           import android.view.View;
           import android.widget.Button;
+          import android.widget.EditText;
           import android.widget.LinearLayout;
           import android.widget.ScrollView;
-          import android.widget.SeekBar;
           import android.widget.TextView;
           import android.widget.Toast;
 
+          import java.io.OutputStream;
+          import java.net.HttpURLConnection;
+          import java.net.URL;
+
           public class MainActivity extends Activity {
-              private SharedPreferences prefs;
-              private Button toggleBtn;
-              private float d;
+              private EditText tokenInput, chatIdInput, msgInput;
 
               @Override
-              protected void onCreate(Bundle b) {
-                  super.onCreate(b);
-                  prefs = getSharedPreferences("cfg", MODE_PRIVATE);
-                  d = getResources().getDisplayMetrics().density;
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
 
                   ScrollView sv = new ScrollView(this);
                   LinearLayout root = new LinearLayout(this);
                   root.setOrientation(LinearLayout.VERTICAL);
-                  int p = (int) (16 * d);
-                  root.setPadding(p, (int) (40 * d), p, p);
+                  root.setPadding(40, 60, 40, 40);
+                  root.setBackgroundColor(0xFF0F172A);
                   sv.addView(root);
 
                   TextView title = new TextView(this);
-                  title.setText("علامة التصويب العائمة");
-                  title.setTextSize(22);
+                  title.setText("المُرسل الخفي (يعمل حقاً) 🕵️‍♂️");
+                  title.setTextColor(0xFF38BDF8);
+                  title.setTextSize(20);
                   root.addView(title);
 
-                  toggleBtn = new Button(this);
-                  toggleBtn.setOnClickListener(new View.OnClickListener() {
-                      @Override public void onClick(View v) { toggle(); }
+                  addLabel(root, "توكن البوت (Bot Token من @BotFather)");
+                  tokenInput = new EditText(this);
+                  tokenInput.setHint("أدخل توكن البوت هنا");
+                  tokenInput.setTextColor(0xFFFFFFFF);
+                  root.addView(tokenInput);
+
+                  addLabel(root, "معرف الهدف (Chat ID للمستلم)");
+                  chatIdInput = new EditText(this);
+                  chatIdInput.setHint("مثال: 123456789");
+                  chatIdInput.setTextColor(0xFFFFFFFF);
+                  root.addView(chatIdInput);
+
+                  addLabel(root, "نص الرسالة السرية");
+                  msgInput = new EditText(this);
+                  msgInput.setHint("اكتب رسالتك هنا...");
+                  msgInput.setTextColor(0xFFFFFFFF);
+                  root.addView(msgInput);
+
+                  Button sendBtn = new Button(this);
+                  sendBtn.setText("إرسال بشكل مجهول تماماً 🚀");
+                  sendBtn.setBackgroundColor(0xFF0284C7);
+                  sendBtn.setTextColor(0xFFFFFFFF);
+                  sendBtn.setOnClickListener(new View.OnClickListener() {
+                      @Override
+                      public void onClick(View v) {
+                          final String token = tokenInput.getText().toString().trim();
+                          final String chatId = chatIdInput.getText().toString().trim();
+                          final String message = msgInput.getText().toString().trim();
+
+                          if (token.isEmpty() || chatId.isEmpty() || message.isEmpty()) {
+                              Toast.makeText(MainActivity.this, "الرجاء تعبئة جميع الحقول!", Toast.LENGTH_SHORT).show();
+                              return;
+                          }
+
+                          new Thread(new Runnable() {
+                              @Override
+                              public void run() {
+                                  sendTelegramMessage(token, chatId, message);
+                              }
+                          }).start();
+                      }
                   });
-                  root.addView(toggleBtn);
-
-                  addLabel(root, "الشكل");
-                  LinearLayout shapes = new LinearLayout(this);
-                  String[] names = {"X", "+", "●"};
-                  for (int i = 0; i < 3; i++) {
-                      final int s = i;
-                      Button bt = new Button(this);
-                      bt.setText(names[i]);
-                      bt.setOnClickListener(new View.OnClickListener() {
-                          @Override public void onClick(View v) {
-                              prefs.edit().putInt("shape", s).apply();
-                          }
-                      });
-                      shapes.addView(bt, new LinearLayout.LayoutParams(0, -2, 1));
-                  }
-                  root.addView(shapes);
-
-                  addLabel(root, "اللون");
-                  LinearLayout colors = new LinearLayout(this);
-                  int[] cs = {Color.RED, Color.GREEN, Color.WHITE, Color.YELLOW, Color.CYAN, Color.MAGENTA};
-                  for (final int c : cs) {
-                      Button bt = new Button(this);
-                      bt.setBackgroundColor(c);
-                      bt.setOnClickListener(new View.OnClickListener() {
-                          @Override public void onClick(View v) {
-                              prefs.edit().putInt("color", c).apply();
-                          }
-                      });
-                      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, (int) (48 * d), 1);
-                      lp.setMargins(4, 4, 4, 4);
-                      colors.addView(bt, lp);
-                  }
-                  root.addView(colors);
-
-                  addSeek(root, "الحجم", "size", 100, 20);
-                  addSeek(root, "السماكة", "thick", 15, 2);
+                  root.addView(sendBtn);
 
                   setContentView(sv);
               }
 
-              private void addLabel(LinearLayout root, String t) {
+              private void addLabel(LinearLayout root, String text) {
                   TextView tv = new TextView(this);
-                  tv.setText(t);
-                  tv.setPadding(0, (int) (16 * d), 0, 0);
+                  tv.setText(text);
+                  tv.setTextColor(0xFF94A3B8);
+                  tv.setPadding(0, 30, 0, 10);
                   root.addView(tv);
               }
 
-              private void addSeek(LinearLayout root, String label, final String key, int max, int def) {
-                  addLabel(root, label);
-                  SeekBar s = new SeekBar(this);
-                  s.setMax(max);
-                  s.setProgress(prefs.getInt(key, def));
-                  s.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-                      @Override public void onProgressChanged(SeekBar sb, int v, boolean u) {
-                          prefs.edit().putInt(key, v).apply();
-                      }
-                      @Override public void onStartTrackingTouch(SeekBar sb) {}
-                      @Override public void onStopTrackingTouch(SeekBar sb) {}
-                  });
-                  root.addView(s);
-              }
+              private void sendTelegramMessage(String token, String chatId, String message) {
+                  try {
+                      String urlString = "https://api.telegram.org/bot" + token + "/sendMessage";
+                      URL url = new URL(urlString);
+                      HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                      conn.setRequestMethod("POST");
+                      conn.setRequestProperty("Content-Type", "application/json; utf-8");
+                      conn.setDoOutput(true);
 
-              private void toggle() {
-                  if (OverlayService.running) {
-                      stopService(new Intent(this, OverlayService.class));
-                      OverlayService.running = false;
-                  } else {
-                      if (!Settings.canDrawOverlays(this)) {
-                          Toast.makeText(this, "فعّل صلاحية الظهور فوق التطبيقات ثم ارجع", Toast.LENGTH_LONG).show();
-                          startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                  Uri.parse("package:" + getPackageName())));
-                          return;
+                      String jsonInputString = "{\"chat_id\": \"" + chatId + "\", \"text\": \"" + message + "\"}";
+
+                      try (OutputStream os = conn.getOutputStream()) {
+                          byte[] input = jsonInputString.getBytes("utf-8");
+                          os.write(input, 0, input.length);
                       }
-                      Intent i = new Intent(this, OverlayService.class);
-                      if (Build.VERSION.SDK_INT >= 26) startForegroundService(i);
-                      else startService(i);
-                      OverlayService.running = true;
+
+                      int code = conn.getResponseCode();
+                      Handler mainHandler = new Handler(Looper.getMainLooper());
+                      mainHandler.post(new Runnable() {
+                          @Override
+                          public void run() {
+                              if (code == 200) {
+                                  Toast.makeText(MainActivity.this, "تم إرسال الرسالة السرية بنجاح! 🚀", Toast.LENGTH_LONG).show();
+                              } else {
+                                  Toast.makeText(MainActivity.this, "فشل الإرسال، تأكد من التوكن وChat ID (كود: " + code + ")", Toast.LENGTH_LONG).show();
+                              }
+                          }
+                      });
+                  } catch (Exception e) {
+                      Handler mainHandler = new Handler(Looper.getMainLooper());
+                      mainHandler.post(new Runnable() {
+                          @Override
+                          public void run() {
+                              Toast.makeText(MainActivity.this, "خطأ في الاتصال بالشبكة!", Toast.LENGTH_SHORT).show();
+                          }
+                      });
                   }
-                  updateBtn();
-              }
-
-              private void updateBtn() {
-                  toggleBtn.setText(OverlayService.running ? "إيقاف العلامة" : "تشغيل العلامة");
-              }
-
-              @Override
-              protected void onResume() {
-                  super.onResume();
-                  updateBtn();
               }
           }
           EOF
@@ -376,5 +221,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: crosshair-apk
+          name: anonymous-sender-apk
           path: app/build/outputs/apk/debug/*.apk
+
