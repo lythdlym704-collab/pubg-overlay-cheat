@@ -10,7 +10,7 @@ source.exclude_dirs = bin, venv, .git, .github
 version = 1.0
 requirements = python3==3.11.5,hostpython3==3.11.5,kivy==2.3.0
 
-orientation = sensor
+orientation = all
 fullscreen = 0
 
 android.permissions = INTERNET,SYSTEM_ALERT_WINDOW
