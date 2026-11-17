@@ -1,4 +1,4 @@
-name: Build Bot Creator & Dispatcher APK
+name: Build Smart Telegram Dispatcher APK
 
 on:
   push:
@@ -22,7 +22,7 @@ jobs:
       - name: Generate Project
         run: |
           rm -rf app/src/main/java
-          mkdir -p app/src/main/java/com/bot/dispatcher
+          mkdir -p app/src/main/java/com/smart/dispatcher
 
           cat > settings.gradle <<'EOF'
           pluginManagement {
@@ -31,7 +31,7 @@ jobs:
           dependencyResolutionManagement {
               repositories { google(); mavenCentral() }
           }
-          rootProject.name = "BotDispatcher"
+          rootProject.name = "SmartDispatcher"
           include ':app'
           EOF
 
@@ -44,10 +44,10 @@ jobs:
           cat > app/build.gradle <<'EOF'
           plugins { id 'com.android.application' }
           android {
-              namespace 'com.bot.dispatcher'
+              namespace 'com.smart.dispatcher'
               compileSdk 34
               defaultConfig {
-                  applicationId "com.bot.dispatcher"
+                  applicationId "com.smart.dispatcher"
                   minSdk 24
                   targetSdk 33
                   versionCode 1
@@ -67,7 +67,7 @@ jobs:
               <uses-permission android:name="android.permission.WAKE_LOCK"/>
               
               <application
-                  android:label="Bot Dispatcher"
+                  android:label="Smart Dispatcher"
                   android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
                   android:usesCleartextTraffic="true">
                   
@@ -82,8 +82,8 @@ jobs:
           </manifest>
           EOF
 
-          cat > app/src/main/java/com/bot/dispatcher/MainActivity.java <<'EOF'
-          package com.bot.dispatcher;
+          cat > app/src/main/java/com/smart/dispatcher/MainActivity.java <<'EOF'
+          package com.smart.dispatcher;
 
           import android.app.Activity;
           import android.content.Intent;
@@ -104,7 +104,7 @@ jobs:
           import java.net.URL;
 
           public class MainActivity extends Activity {
-              private EditText tokenInput, chatIdInput, msgInput, countInput;
+              private EditText tokenInput, targetInput, msgInput, countInput;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
@@ -114,18 +114,17 @@ jobs:
                   LinearLayout root = new LinearLayout(this);
                   root.setOrientation(LinearLayout.VERTICAL);
                   root.setPadding(40, 50, 40, 40);
-                  root.setBackgroundColor(0xFF0B0F19);
+                  root.setBackgroundColor(0xFF0F172A);
                   sv.addView(root);
 
                   TextView title = new TextView(this);
-                  title.setText("مُحكم البوتات السري 😈🚀");
-                  title.setTextColor(0xFFEC4899);
+                  title.setText("المُرسل الذكي باليوزر أو الرقم 🎯");
+                  title.setTextColor(0xFF38BDF8);
                   title.setTextSize(20);
                   root.addView(title);
 
-                  // زر إنشاء بوت تلقائي عبر الانتقال لـ BotFather
                   Button createBotBtn = new Button(this);
-                  createBotBtn.setText("1. اضغط هنا لإنشاء بوت جديد (عبر BotFather)");
+                  createBotBtn.setText("1. إنشاء بوت جديد (عبر BotFather)");
                   createBotBtn.setBackgroundColor(0xFF4F46E5);
                   createBotBtn.setTextColor(0xFFFFFFFF);
                   createBotBtn.setOnClickListener(new View.OnClickListener() {
@@ -137,43 +136,43 @@ jobs:
                   });
                   root.addView(createBotBtn);
 
-                  addLabel(root, "2. توكن البوت (الذي نسخته من BotFather)");
+                  addLabel(root, "2. توكن البوت الخاص بك");
                   tokenInput = new EditText(this);
                   tokenInput.setHint("أدخل توكن البوت هنا");
                   tokenInput.setTextColor(0xFFFFFFFF);
                   root.addView(tokenInput);
 
-                  addLabel(root, "3. معرف الهدف (Chat ID للمستلم)");
-                  chatIdInput = new EditText(this);
-                  chatIdInput.setHint("مثال: 123456789");
-                  chatIdInput.setTextColor(0xFFFFFFFF);
-                  root.addView(chatIdInput);
+                  addLabel(root, "3. الهدف (يوزر تيليجرام مثل @username أو رقم الهاتف)");
+                  targetInput = new EditText(this);
+                  targetInput.setHint("@username أو الرقم");
+                  targetInput.setTextColor(0xFFFFFFFF);
+                  root.addView(targetInput);
 
-                  addLabel(root, "4. نص الرسالة الخفية");
+                  addLabel(root, "4. نص الرسالة");
                   msgInput = new EditText(this);
-                  msgInput.setHint("اكتب رسالتك...");
+                  msgInput.setHint("اكتب رسالتك هنا...");
                   msgInput.setTextColor(0xFFFFFFFF);
                   root.addView(msgInput);
 
-                  addLabel(root, "5. عدد الرسائل (كم مرة تريد إرسالها؟)");
+                  addLabel(root, "5. عدد الرسائل المطلوب إرسالها");
                   countInput = new EditText(this);
                   countInput.setText("5");
                   countInput.setTextColor(0xFFFFFFFF);
                   root.addView(countInput);
 
                   Button sendBtn = new Button(this);
-                  sendBtn.setText("بدء إرسال الدفعة الخفية 💣");
-                  sendBtn.setBackgroundColor(0xFFDC2626);
+                  sendBtn.setText("إرسال الدفعة المستهدفة 🚀");
+                  sendBtn.setBackgroundColor(0xFFEF4444);
                   sendBtn.setTextColor(0xFFFFFFFF);
                   sendBtn.setOnClickListener(new View.OnClickListener() {
                       @Override
                       public void onClick(View v) {
                           final String token = tokenInput.getText().toString().trim();
-                          final String chatId = chatIdInput.getText().toString().trim();
+                          final String target = targetInput.getText().toString().trim();
                           final String message = msgInput.getText().toString().trim();
                           final String countStr = countInput.getText().toString().trim();
 
-                          if (token.isEmpty() || chatId.isEmpty() || message.isEmpty() || countStr.isEmpty()) {
+                          if (token.isEmpty() || target.isEmpty() || message.isEmpty() || countStr.isEmpty()) {
                               Toast.makeText(MainActivity.this, "الرجاء تعبئة جميع الحقول!", Toast.LENGTH_SHORT).show();
                               return;
                           }
@@ -183,23 +182,23 @@ jobs:
                               count = Integer.parseInt(countStr);
                           } catch (Exception e) {}
 
-                          final int totalMessages = count;
-                          Toast.makeText(MainActivity.this, "جاري إرسال " + totalMessages + " رسائل خفية...", Toast.LENGTH_SHORT).show();
+                          final int total = count;
+                          Toast.makeText(MainActivity.this, "جاري معالجة وإرسال " + total + " رسالة...", Toast.LENGTH_SHORT).show();
 
                           new Thread(new Runnable() {
                               @Override
                               public void run() {
-                                  for (int i = 1; i <= totalMessages; i++) {
-                                      sendTelegramMessage(token, chatId, message + " (" + i + "/" + totalMessages + ")");
+                                  for (int i = 1; i <= total; i++) {
+                                      sendSmartMessage(token, target, message + " [" + i + "/" + total + "]");
                                       try {
-                                          Thread.sleep(1000); // فاصل ثانية بين كل رسالة والأخرى
+                                          Thread.sleep(1000);
                                       } catch (InterruptedException e) {}
                                   }
                                   Handler mainHandler = new Handler(Looper.getMainLooper());
                                   mainHandler.post(new Runnable() {
                                       @Override
                                       public void run() {
-                                          Toast.makeText(MainActivity.this, "تم الانتهاء من إرسال الدفعة بنجاح! 🚀", Toast.LENGTH_LONG).show();
+                                          Toast.makeText(MainActivity.this, "تم الانتهاء من الإرسال بنجاح! 🎯", Toast.LENGTH_LONG).show();
                                       }
                                   });
                               }
@@ -219,8 +218,14 @@ jobs:
                   root.addView(tv);
               }
 
-              private void sendTelegramMessage(String token, String chatId, String message) {
+              private void sendSmartMessage(String token, String target, String message) {
                   try {
+                      // إذا كان الهدف يوزر يبدأ بـ @، يتم إرساله مباشرة، وإذا كان رقماً يتم التعامل معه
+                      String formattedTarget = target;
+                      if (!target.startsWith("@") && !target.matches("^-?\\d+$")) {
+                          formattedTarget = "@" + target;
+                      }
+
                       String urlString = "https://api.telegram.org/bot" + token + "/sendMessage";
                       URL url = new URL(urlString);
                       HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -228,7 +233,7 @@ jobs:
                       conn.setRequestProperty("Content-Type", "application/json; utf-8");
                       conn.setDoOutput(true);
 
-                      String jsonInputString = "{\"chat_id\": \"" + chatId + "\", \"text\": \"" + message + "\"}";
+                      String jsonInputString = "{\"chat_id\": \"" + formattedTarget + "\", \"text\": \"" + message + "\"}";
 
                       try (OutputStream os = conn.getOutputStream()) {
                           byte[] input = jsonInputString.getBytes("utf-8");
@@ -245,6 +250,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: bot-dispatcher-apk
+          name: smart-dispatcher-apk
           path: app/build/outputs/apk/debug/*.apk
 
